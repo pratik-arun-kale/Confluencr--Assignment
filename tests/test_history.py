@@ -1,9 +1,8 @@
 import uuid
-from datetime import datetime
 
 import pytest
 
-from tests.conftest import API
+from tests.conftest import API, parse_ts
 
 
 @pytest.fixture
@@ -44,7 +43,7 @@ def test_latest_first_ordering(history, seeded):
     response = history()
 
     assert refs(response) == ["r5", "r4", "r3", "r2", "r1"]
-    timestamps = [datetime.fromisoformat(t["created_at"]) for t in response.json()["data"]]
+    timestamps = [parse_ts(t["created_at"]) for t in response.json()["data"]]
     assert timestamps == sorted(timestamps, reverse=True)
 
 

@@ -27,7 +27,7 @@ router = APIRouter(prefix="/accounts/{account_id}/transactions", tags=["Transact
         "(`DUPLICATE_TRANSACTION` with the original for an identical retry, "
         "`REFERENCE_ID_CONFLICT` if the payload differs)."
     ),
-    responses=error_responses(400, 404, 409, 422),
+    responses=error_responses(400, 404, 409, 422, 503),
 )
 def create_transaction(
     account_id: uuid.UUID, payload: TransactionCreate, db: Session = Depends(get_db)

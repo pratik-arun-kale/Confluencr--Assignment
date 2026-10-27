@@ -19,7 +19,7 @@ router = APIRouter(prefix="/transfers", tags=["Transfers"])
         "accounts' histories (linked by `transfer_id`). Either everything is written or "
         "nothing is. `reference_id` is unique per source account."
     ),
-    responses=error_responses(400, 404, 409, 422),
+    responses=error_responses(400, 404, 409, 422, 503),
 )
 def create_transfer(payload: TransferCreate, db: Session = Depends(get_db)) -> TransferOut:
     return transfer_service.create_transfer(db, payload)

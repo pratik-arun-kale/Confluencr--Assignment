@@ -3,6 +3,7 @@ rebuild the schema with Alembic once per run, and truncate tables between tests.
 
 import os
 from collections.abc import Callable, Iterator
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -23,6 +24,11 @@ from app.database import engine as app_engine  # noqa: E402
 from app.main import app  # noqa: E402
 
 API = "/api/v1"
+
+
+def parse_ts(value: str) -> datetime:
+    """Parse an API timestamp. (Python 3.10's fromisoformat does not accept a trailing Z.)"""
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 @pytest.fixture(scope="session")

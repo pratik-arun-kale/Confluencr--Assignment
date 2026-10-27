@@ -7,6 +7,7 @@ _DESCRIPTIONS = {
     404: "Account not found (ACCOUNT_NOT_FOUND)",
     409: "Duplicate reference_id (DUPLICATE_* or REFERENCE_ID_CONFLICT)",
     422: "Business rule violated (INSUFFICIENT_BALANCE, BALANCE_LIMIT_EXCEEDED)",
+    503: "Account row lock not acquired in time (LOCK_TIMEOUT); safe to retry",
 }
 
 

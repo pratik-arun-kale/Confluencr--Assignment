@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import timedelta
 
 import pytest
 
-from tests.conftest import API
+from tests.conftest import API, parse_ts
 
 
 def test_create_account_starts_with_zero_balance(client):
@@ -14,7 +14,7 @@ def test_create_account_starts_with_zero_balance(client):
     assert body["name"] == "Pratik"
     assert body["balance"] == "0.00"
     uuid.UUID(body["id"])
-    assert datetime.fromisoformat(body["created_at"]).tzinfo is not None
+    assert parse_ts(body["created_at"]).utcoffset() == timedelta(0)
 
 
 def test_account_ids_are_unique(create_account):

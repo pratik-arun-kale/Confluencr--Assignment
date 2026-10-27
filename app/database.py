@@ -17,7 +17,8 @@ def make_engine(url: str, lock_timeout_ms: int) -> Engine:
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20,
-        connect_args={"options": f"-c lock_timeout={lock_timeout_ms}"},
+        # UTC timestamps in responses regardless of the server's local time zone.
+        connect_args={"options": f"-c lock_timeout={lock_timeout_ms} -c timezone=UTC"},
     )
 
 
