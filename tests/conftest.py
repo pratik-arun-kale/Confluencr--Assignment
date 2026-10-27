@@ -10,6 +10,7 @@ import pytest
 from app.config import get_settings
 
 os.environ["DATABASE_URL"] = get_settings().test_database_url
+os.environ["DB_LOCK_TIMEOUT_MS"] = "1500"  # keeps the lock-timeout test fast
 get_settings.cache_clear()
 
 from alembic import command  # noqa: E402
