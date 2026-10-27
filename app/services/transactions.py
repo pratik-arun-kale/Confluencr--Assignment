@@ -107,9 +107,7 @@ def list_transactions(
     return list(items), total
 
 
-def _find_by_reference(
-    db: Session, account_id: uuid.UUID, reference_id: str
-) -> Transaction | None:
+def _find_by_reference(db: Session, account_id: uuid.UUID, reference_id: str) -> Transaction | None:
     return db.scalar(
         select(Transaction).where(
             Transaction.account_id == account_id, Transaction.reference_id == reference_id
@@ -129,7 +127,11 @@ def _duplicate_error(
         # A retry of a request that already succeeded: point the client at the original.
         return DuplicateTransactionError(
             f"Transaction with reference_id '{existing.reference_id}' already exists",
-            {"existing_transaction": TransactionOut.model_validate(existing).model_dump(mode="json")},
+            {
+                "existing_transaction": TransactionOut.model_validate(existing).model_dump(
+                    mode="json"
+                )
+            },
         )
     return ReferenceIdConflictError(
         f"reference_id '{existing.reference_id}' is already used by a different transaction",

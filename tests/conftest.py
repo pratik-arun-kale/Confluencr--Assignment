@@ -64,7 +64,9 @@ def create_account(client: TestClient) -> Callable[..., dict[str, Any]]:
 def post_txn(client: TestClient) -> Callable[..., Any]:
     counter = {"n": 0}
 
-    def _post(account_id: str, type_: str, amount: str, reference_id: str | None = None, **extra: Any) -> Any:
+    def _post(
+        account_id: str, type_: str, amount: str, reference_id: str | None = None, **extra: Any
+    ) -> Any:
         counter["n"] += 1
         payload = {
             "type": type_,

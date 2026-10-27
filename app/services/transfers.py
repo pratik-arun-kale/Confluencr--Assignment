@@ -78,7 +78,9 @@ def create_transfer(db: Session, data: TransferCreate) -> TransferOut:
         raise _duplicate_error(db, existing, data) from exc
 
 
-def _find_by_reference(db: Session, from_account_id: uuid.UUID, reference_id: str) -> Transfer | None:
+def _find_by_reference(
+    db: Session, from_account_id: uuid.UUID, reference_id: str
+) -> Transfer | None:
     return db.scalar(
         select(Transfer).where(
             Transfer.from_account_id == from_account_id, Transfer.reference_id == reference_id

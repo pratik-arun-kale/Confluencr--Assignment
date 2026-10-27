@@ -90,15 +90,13 @@ def test_ledger_matches_model_for_any_operation_sequence(client, engine, ops):
                 external_out += amount
             last_success = (url, payload)
 
-    balances = [
-        Decimal(client.get(f"{API}/accounts/{i}/balance").json()["balance"]) for i in ids
-    ]
+    balances = [Decimal(client.get(f"{API}/accounts/{i}/balance").json()["balance"]) for i in ids]
     assert balances == model
     assert all(b >= 0 for b in balances)
     assert sum(balances) == external_in - external_out
 
     with engine.connect() as conn:
-        for account_id, balance in zip(ids, balances):
+        for account_id, balance in zip(ids, balances, strict=True):
             ledger_sum = conn.execute(
                 text(
                     "SELECT COALESCE(SUM(CASE type WHEN 'credit' THEN amount ELSE -amount END), 0)"

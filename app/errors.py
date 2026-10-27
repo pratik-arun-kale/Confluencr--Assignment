@@ -1,6 +1,6 @@
 """Domain errors and the handlers that render every error in one consistent envelope:
 
-    {"error": {"code": "...", "message": "...", "details": ..., "request_id": "..."}}
+{"error": {"code": "...", "message": "...", "details": ..., "request_id": "..."}}
 """
 
 import logging

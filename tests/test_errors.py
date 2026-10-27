@@ -85,7 +85,7 @@ def test_unexpected_error_returns_500_without_leaking(client, create_account, mo
         json={"type": "credit", "amount": "1", "reference_id": "x"},
     )
 
-    error = assert_envelope(response, 500, "INTERNAL_ERROR")
+    assert_envelope(response, 500, "INTERNAL_ERROR")
     assert "secret" not in response.text
 
 

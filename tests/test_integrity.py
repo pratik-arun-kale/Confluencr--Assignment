@@ -13,7 +13,12 @@ def ledger(create_account, post_txn, client):
     txn = post_txn(a["id"], "credit", "100", reference_id="R1").json()
     transfer = client.post(
         "/api/v1/transfers",
-        json={"from_account_id": a["id"], "to_account_id": b["id"], "amount": "10", "reference_id": "T1"},
+        json={
+            "from_account_id": a["id"],
+            "to_account_id": b["id"],
+            "amount": "10",
+            "reference_id": "T1",
+        },
     ).json()
     return {"a": a["id"], "b": b["id"], "txn": txn["id"], "transfer": transfer["id"]}
 
@@ -74,7 +79,13 @@ INSERT_TXN = (
     ],
 )
 def test_transaction_constraints(engine, ledger, overrides, constraint):
-    params = {"id": uuid.uuid4(), "account": ledger["a"], "type": "credit", "amount": 1, "ref": "new"}
+    params = {
+        "id": uuid.uuid4(),
+        "account": ledger["a"],
+        "type": "credit",
+        "amount": 1,
+        "ref": "new",
+    }
 
     with pytest.raises(IntegrityError, match=constraint):
         execute(engine, INSERT_TXN, **{**params, **overrides})

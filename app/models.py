@@ -55,9 +55,7 @@ class Transfer(Base):
     __tablename__ = "transfers"
     __table_args__ = (
         CheckConstraint("amount > 0", name="ck_transfers_amount_positive"),
-        CheckConstraint(
-            "from_account_id <> to_account_id", name="ck_transfers_distinct_accounts"
-        ),
+        CheckConstraint("from_account_id <> to_account_id", name="ck_transfers_distinct_accounts"),
         UniqueConstraint("from_account_id", "reference_id", name="uq_transfers_from_reference"),
     )
     __mapper_args__ = {"eager_defaults": True}

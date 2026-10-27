@@ -27,7 +27,9 @@ def test_name_is_trimmed(client):
     assert response.json()["name"] == "Pratik"
 
 
-@pytest.mark.parametrize("payload", [{}, {"name": ""}, {"name": "   "}, {"name": None}, {"name": 123}])
+@pytest.mark.parametrize(
+    "payload", [{}, {"name": ""}, {"name": "   "}, {"name": None}, {"name": 123}]
+)
 def test_name_is_required(client, payload):
     response = client.post(f"{API}/accounts", json=payload)
 
