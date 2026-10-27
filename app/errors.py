@@ -9,11 +9,14 @@ from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.logging_config import request_id_var
 
 logger = logging.getLogger("app.errors")
+
+LOCK_NOT_AVAILABLE = "55P03"  # PostgreSQL SQLSTATE raised when lock_timeout expires
 
 
 class AppError(Exception):
@@ -125,6 +128,20 @@ async def _http_error_handler(_: Request, exc: Exception) -> JSONResponse:
     )
 
 
+async def _operational_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, OperationalError)
+    if getattr(exc.orig, "sqlstate", None) == LOCK_NOT_AVAILABLE:
+        logger.warning("Lock timeout on %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=error_body(
+                "LOCK_TIMEOUT", "The account is busy with other operations; please retry"
+            ),
+            headers={"Retry-After": "1"},
+        )
+    return await _unhandled_error_handler(request, exc)
+
+
 async def _unhandled_error_handler(_: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled error", exc_info=exc)
     return JSONResponse(
@@ -137,4 +154,5 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(AppError, _app_error_handler)
     app.add_exception_handler(RequestValidationError, _validation_error_handler)
     app.add_exception_handler(StarletteHTTPException, _http_error_handler)
+    app.add_exception_handler(OperationalError, _operational_error_handler)
     app.add_exception_handler(Exception, _unhandled_error_handler)

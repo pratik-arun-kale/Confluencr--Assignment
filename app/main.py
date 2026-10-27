@@ -4,7 +4,7 @@ from app.config import get_settings
 from app.errors import register_exception_handlers
 from app.logging_config import configure_logging
 from app.middleware import RequestContextMiddleware
-from app.routers import accounts, health, transactions
+from app.routers import accounts, health, transactions, transfers
 
 DESCRIPTION = """
 A transaction ledger: create accounts, post credits/debits, read balances and
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(accounts.router, prefix=settings.api_prefix)
     app.include_router(transactions.router, prefix=settings.api_prefix)
+    app.include_router(transfers.router, prefix=settings.api_prefix)
     return app
 
 

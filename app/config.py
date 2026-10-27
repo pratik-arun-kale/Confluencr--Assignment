@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/ledger"
     test_database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/ledger_test"
     log_level: str = "INFO"
+    # Fail fast instead of queueing forever behind a held row lock.
+    db_lock_timeout_ms: int = 5000
     app_name: str = "Transaction Ledger API"
     api_prefix: str = "/api/v1"
 

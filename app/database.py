@@ -11,11 +11,18 @@ class Base(DeclarativeBase):
     pass
 
 
-def make_engine(url: str) -> Engine:
-    return create_engine(url, pool_pre_ping=True, pool_size=10, max_overflow=20)
+def make_engine(url: str, lock_timeout_ms: int) -> Engine:
+    return create_engine(
+        url,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+        connect_args={"options": f"-c lock_timeout={lock_timeout_ms}"},
+    )
 
 
-engine = make_engine(get_settings().database_url)
+_settings = get_settings()
+engine = make_engine(_settings.database_url, _settings.db_lock_timeout_ms)
 
 # expire_on_commit=False lets routers serialize ORM objects after the service commits.
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
