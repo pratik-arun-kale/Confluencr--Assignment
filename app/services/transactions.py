@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,7 +13,7 @@ from app.errors import (
 )
 from app.models import MAX_BALANCE, Account, Transaction, TransactionType
 from app.schemas import TransactionCreate, TransactionOut
-from app.services.accounts import lock_accounts
+from app.services.accounts import get_account, lock_accounts
 
 UNIQUE_REFERENCE_CONSTRAINT = "uq_transactions_account_reference"
 
@@ -76,6 +76,35 @@ def create_transaction(db: Session, account_id: uuid.UUID, data: TransactionCrea
         if existing is None:
             raise
         raise _duplicate_error(existing, data) from exc
+
+
+def list_transactions(
+    db: Session,
+    account_id: uuid.UUID,
+    type_: TransactionType | None,
+    page: int,
+    limit: int,
+) -> tuple[list[Transaction], int]:
+    """Latest-first page of an account's transactions, plus the total matching count."""
+    # One REPEATABLE READ snapshot for both queries, so total_records always agrees with
+    # the page contents even while other requests are inserting.
+    db.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+    get_account(db, account_id)
+
+    filters = [Transaction.account_id == account_id]
+    if type_ is not None:
+        filters.append(Transaction.type == type_.value)
+
+    total = db.scalar(select(func.count()).select_from(Transaction).where(*filters)) or 0
+    items = db.scalars(
+        select(Transaction)
+        .where(*filters)
+        .order_by(Transaction.created_at.desc(), Transaction.seq.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+    ).all()
+    # The read-only snapshot transaction ends when get_db() closes the session.
+    return list(items), total
 
 
 def _find_by_reference(
