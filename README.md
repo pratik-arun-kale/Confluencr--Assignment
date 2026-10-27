@@ -32,64 +32,161 @@ Pydantic v2 · pytest + Hypothesis · ruff · mypy (strict)
 
 ## Running locally
 
-### Prerequisites
+Setup takes about 10 minutes on a fresh machine. Docker is **not** required; you only need
+Python and PostgreSQL.
 
-- Python **3.10 or newer**
-- A running **PostgreSQL** server, with a user that may create databases (e.g. `postgres`)
+### Step 0: Install the prerequisites (skip any you already have)
 
-Docker is not required.
+**1. Python 3.10 or newer** (3.11+ recommended). Check with `python --version`.
 
-### 1. Install
+- **Windows:** download it from [python.org](https://www.python.org/downloads/). In the installer, tick **"Add python.exe to PATH"**.
+- **macOS:** `brew install python@3.12`
+- **Ubuntu/Debian:** `sudo apt install python3 python3-venv python3-pip`
+
+**2. PostgreSQL 13 or newer** (developed on 17). Make sure it is running on port `5432`.
+
+- **Windows:** use the [EDB installer](https://www.postgresql.org/download/windows/). Keep the defaults and **write down the password you choose for the `postgres` user**. PostgreSQL then runs as a Windows service and starts automatically.
+- **macOS:**
+  ```bash
+  brew install postgresql@17 && brew services start postgresql@17
+  createuser -s postgres            # Homebrew doesn't create a "postgres" user by default
+  psql -d postgres -c "ALTER USER postgres PASSWORD 'postgres';"
+  ```
+- **Ubuntu/Debian:**
+  ```bash
+  sudo apt install postgresql
+  sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+  ```
+
+The app needs a PostgreSQL user that is allowed to create databases. The built-in `postgres`
+superuser works.
+
+### Step 1: Get the code and install dependencies
+
+**Windows (PowerShell):**
 
 ```powershell
 git clone https://github.com/pratik-arun-kale/Confluencr--Assignment.git
 cd Confluencr--Assignment
 python -m venv .venv
-.\.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 ```
 
-### 2. Configure
+> If PowerShell says *"running scripts is disabled on this system"*, run
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then activate again.
 
-```powershell
-copy .env.example .env               # macOS/Linux: cp .env.example .env
+**macOS / Linux:**
+
+```bash
+git clone https://github.com/pratik-arun-kale/Confluencr--Assignment.git
+cd Confluencr--Assignment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
 ```
 
-Edit `.env` and set your PostgreSQL credentials:
+Your prompt should now start with `(.venv)`. **Every later command must be run in this
+activated terminal.** If you open a new terminal, `cd` into the project and run the
+activate command again.
+
+### Step 2: Tell the app how to reach PostgreSQL
+
+Copy the example settings file:
+
+```powershell
+copy .env.example .env          # macOS/Linux: cp .env.example .env
+```
+
+Open `.env` in any text editor. Replace the second `postgres` in **both** URLs (the part
+after the colon, which is the password) with your PostgreSQL password:
 
 ```ini
-DATABASE_URL=postgresql+psycopg://postgres:<password>@localhost:5432/ledger
-TEST_DATABASE_URL=postgresql+psycopg://postgres:<password>@localhost:5432/ledger_test
+#                            user     password       host      port  database
+DATABASE_URL=postgresql+psycopg://postgres:YOUR_PASSWORD@localhost:5432/ledger
+TEST_DATABASE_URL=postgresql+psycopg://postgres:YOUR_PASSWORD@localhost:5432/ledger_test
 ```
 
-> Special characters in the password must be URL-encoded. For example, `p@ss` becomes `p%40ss`.
+> If your password contains special characters, encode them: `@` → `%40`, `#` → `%23`,
+> `:` → `%3A`, `/` → `%2F`, `%` → `%25`. For example, `Secret@1` becomes `Secret%401`.
 
-### 3. Create the databases and apply migrations
+You don't need to create any databases by hand; the next step does it.
 
-```powershell
-python -m scripts.create_db          # creates "ledger" and "ledger_test" if missing
-alembic upgrade head                 # tables, constraints, immutability trigger
+### Step 3: Create the databases and tables
+
+```bash
+python -m scripts.create_db     # creates the "ledger" and "ledger_test" databases
+alembic upgrade head            # creates tables, constraints and the immutability trigger
 ```
 
-### 4. Run
+Expected output: `Created database 'ledger'`, `Created database 'ledger_test'`, followed by
+an Alembic line `Running upgrade  -> 0001`. Both commands are safe to run again: a second
+run reports that the databases already exist and applies nothing.
 
-```powershell
+### Step 4: Start the API
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-Then open **http://127.0.0.1:8000/docs**.
+When you see `Uvicorn running on http://127.0.0.1:8000`, open these in a browser:
 
-#### Quick smoke test
+- **http://127.0.0.1:8000/docs**: interactive Swagger UI. Click an endpoint, then **Try it out**, then **Execute**.
+- **http://127.0.0.1:8000/health**: should show `{"status":"ok","database":"up"}`.
+
+Press `Ctrl+C` to stop the server.
+
+### Step 5 (optional): Try it from the command line
+
+Open a **second** terminal and leave the server running in the first.
+
+**macOS / Linux / Git Bash:**
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/accounts -H "Content-Type: application/json" -d '{"name": "Alice"}'
-# use the returned id:
-curl -X POST http://127.0.0.1:8000/api/v1/accounts/<id>/transactions -H "Content-Type: application/json" \
+BASE=http://127.0.0.1:8000/api/v1
+ID=$(curl -s -X POST $BASE/accounts -H "Content-Type: application/json" \
+     -d '{"name": "Alice"}' | python -c "import sys, json; print(json.load(sys.stdin)['id'])")
+
+curl -s -X POST $BASE/accounts/$ID/transactions -H "Content-Type: application/json" \
      -d '{"type": "credit", "amount": "100.00", "reference_id": "INV-001"}'
-curl http://127.0.0.1:8000/api/v1/accounts/<id>/balance
+curl -s -X POST $BASE/accounts/$ID/transactions -H "Content-Type: application/json" \
+     -d '{"type": "debit", "amount": "30.00", "reference_id": "INV-002"}'
+curl -s $BASE/accounts/$ID/balance                  # {"account_id": "...", "balance": "70.00"}
+curl -s "$BASE/accounts/$ID/transactions?page=1&limit=10"
 ```
 
-On Windows, `tasks.ps1` wraps the same steps: `.\tasks.ps1 setup | run | test | lint | verify`.
+**Windows PowerShell:**
+
+```powershell
+$base = "http://127.0.0.1:8000/api/v1"
+$acc = Invoke-RestMethod -Method Post "$base/accounts" -ContentType "application/json" -Body '{"name": "Alice"}'
+$id = $acc.id
+
+Invoke-RestMethod -Method Post "$base/accounts/$id/transactions" -ContentType "application/json" `
+  -Body '{"type": "credit", "amount": "100.00", "reference_id": "INV-001"}'
+Invoke-RestMethod -Method Post "$base/accounts/$id/transactions" -ContentType "application/json" `
+  -Body '{"type": "debit", "amount": "30.00", "reference_id": "INV-002"}'
+Invoke-RestMethod "$base/accounts/$id/balance"      # balance : 70.00
+Invoke-RestMethod "$base/accounts/$id/transactions?page=1&limit=10" | ConvertTo-Json -Depth 5
+```
+
+Every endpoint, including transfers, is documented with examples in [docs/API.md](docs/API.md).
+
+### Windows shortcut
+
+`tasks.ps1` wraps the same steps. Run `.\tasks.ps1 setup` (run it again after editing `.env`
+the first time), then `.\tasks.ps1 run`. The other tasks are `test`, `lint` and `verify`.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `password authentication failed for user "postgres"` | The password in `.env` is wrong, or has special characters that need encoding (see Step 2). |
+| `connection refused` / `could not connect to server` | PostgreSQL isn't running. **Windows:** open *Services* and start `postgresql-x64-17`. **macOS:** `brew services start postgresql@17`. **Linux:** `sudo systemctl start postgresql`. |
+| `permission denied to create database` | The user in `.env` can't create databases. Use `postgres`, or run `ALTER USER <name> CREATEDB;`. |
+| `relation "accounts" does not exist` | Step 3 was skipped. Run `alembic upgrade head`. |
+| `'python' / 'alembic' / 'uvicorn' is not recognized` | The virtual environment isn't active. Re-run the activate command from Step 1. On macOS/Linux, use `python3` before the venv exists. |
+| `address already in use` (port 8000) | Another program is using the port. Run `uvicorn app.main:app --port 8001` instead. |
 
 ## Tests and quality checks
 
