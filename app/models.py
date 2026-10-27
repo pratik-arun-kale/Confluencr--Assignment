@@ -22,6 +22,7 @@ from app.database import Base
 
 # Exact decimal money: 16 integer digits, 2 fractional. Never float.
 Money = Numeric(18, 2)
+MAX_BALANCE = Decimal("9999999999999999.99")  # largest value NUMERIC(18, 2) can hold
 
 # clock_timestamp() (not now()) so rows written inside one DB transaction still get
 # distinct, real insertion times.
